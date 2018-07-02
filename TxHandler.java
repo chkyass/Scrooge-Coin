@@ -4,7 +4,7 @@ import java.util.ArrayList;
 public class TxHandler {
 
 
-    private UTXOPool ledger;
+    private UTXOPool pool;
 
     /**
      * Creates a public ledger whose current UTXOPool (collection of unspent transaction outputs) is
@@ -13,32 +13,10 @@ public class TxHandler {
      */
     public TxHandler(UTXOPool utxoPool) {
         // IMPLEMENT THIS
-        this.ledger = new UTXOPool(utxoPool);
+        this.pool = new UTXOPool(utxoPool);
     }
 
 
-
-    private boolean checkOutSig(ArrayList<Transaction.Input> inputs, Transaction tx) {
-        for (int i = 0; i < inputs.size(); i++) {
-            UTXO utxo = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
-            if(!Crypto.verifySignature(ledger.getTxOutput(utxo).address, tx.getRawDataToSign(i), inputs.get(i).signature))
-                return false;
-            if(!ledger.contains(utxo))
-                return false;
-        }
-        return true;
-    }
-
-    private boolean checkDoubleSpend(ArrayList<Transaction.Input> inputs) {
-        for(int i = 0; i<inputs.size(); i++){
-            UTXO utxo = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
-            for(int j = 0; j < inputs.size(); j++){
-                if(utxo.equals(new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex)))
-                    return false;
-            }
-        }
-        return true;
-    }
 
     /**
      * @return true if:
@@ -50,25 +28,32 @@ public class TxHandler {
      *     values; and false otherwise.
      */
     public boolean isValidTx(Transaction tx) {
-        // IMPLEMENT THIS
-        ArrayList<Transaction.Input> inputs = tx.getInputs();
-        ArrayList<Transaction.Output> outputs = tx.getOutputs();
 
-        double sumOu = 0;
-        for(int i = 0; i < outputs.size(); i++) {
-            if(outputs.get(i).value > 0)
-                sumOu += outputs.get(i).value;
-            else
+        UTXOPool seen = new UTXOPool();
+        double outSum = 0;
+        double inSum = 0;
+
+        for(int i = 0; i<tx.numInputs(); i++) {
+            Transaction.Input in = tx.getInput(i);
+            UTXO utxo = new UTXO(in.prevTxHash, in.outputIndex);
+
+            //Check signature
+            if(!Crypto.verifySignature(this.pool.getTxOutput(utxo).address, tx.getRawDataToSign(i), in.signature))
                 return false;
+            //Check all inputs are valid and no input is consumed more than once
+            if(!this.pool.contains(utxo) || seen.contains(utxo))
+                return false;
+
+            Transaction.Output prevOut = this.pool.getTxOutput(utxo);
+            seen.addUTXO(utxo, prevOut);
+            inSum += prevOut.value;
         }
 
-        double sumIn = 0;
-        for(int i = 0; i < inputs.size(); i++) {
-            UTXO utxo = new UTXO(inputs.get(i).prevTxHash, inputs.get(i).outputIndex);
-            sumIn += ledger.getTxOutput(utxo).value;
+        for (Transaction.Output out : tx.getOutputs()){
+            outSum += out.value;
         }
 
-        return (sumIn >= sumOu) && checkDoubleSpend(inputs) && checkOutSig(inputs, tx);
+        return outSum <= inSum;
     }
 
     /**
