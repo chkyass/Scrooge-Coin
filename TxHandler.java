@@ -80,8 +80,8 @@ public class TxHandler {
                 }
             }
         }
-
-        return (Transaction[]) transactions.toArray();
+        Transaction[] t = new Transaction[transactions.size()];
+        return transactions.toArray(t);
     }
 
 }
