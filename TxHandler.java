@@ -12,7 +12,6 @@ public class TxHandler {
      * constructor.
      */
     public TxHandler(UTXOPool utxoPool) {
-        // IMPLEMENT THIS
         this.pool = new UTXOPool(utxoPool);
     }
 
@@ -62,9 +61,27 @@ public class TxHandler {
      * updating the current UTXO pool as appropriate.
      */
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
-        // IMPLEMENT THIS
 
-        return null;
+        ArrayList<Transaction> transactions =  new ArrayList<>();
+
+        for (int i = 0; i < possibleTxs.length; i++) {
+            if(isValidTx(possibleTxs[i])) {
+                transactions.add(possibleTxs[i]);
+
+                // Remove spent UTXO from pool
+                for(int k = 0; k< possibleTxs[i].numInputs(); k++) {
+                    Transaction.Input in = possibleTxs[i].getInput(k);
+                    this.pool.removeUTXO(new UTXO(in.prevTxHash, in.outputIndex));
+                }
+
+                // Update pool with new UTXO
+                for(int j = 0; j < possibleTxs[i].numOutputs(); j++) {
+                    this.pool.addUTXO(new UTXO(possibleTxs[i].getHash(), j), possibleTxs[i].getOutput(j));
+                }
+            }
+        }
+
+        return (Transaction[]) transactions.toArray();
     }
 
 }
