@@ -1,4 +1,6 @@
 # Transactions organisation
+I used this to retain the UTXO model, and how the verification of transaction works. The best way to never forget something is to implement it !
+
 <pre>      
 Transaction
 |input  |
